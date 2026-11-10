@@ -1,0 +1,1258 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teka-Teki Silang Pemasaran 4P Dual Screen Interaktif</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Canvas Confetti CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            purple: '#6366f1',
+                            pink: '#ec4899',
+                            yellow: '#f59e0b',
+                            cyan: '#06b6d4',
+                            dark: '#0f172a'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Force 16:9 Aspect Ratio Container for Interactive Boards */
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #311042 100%);
+            color: #ffffff;
+            user-select: none;
+            -webkit-user-select: none;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        .aspect-16-9-wrapper {
+            width: 100vw;
+            height: 56.25vw; /* 16:9 ratio */
+            max-height: 100vh;
+            max-width: 177.78vh; /* 16:9 ratio */
+            margin: auto;
+            position: absolute;
+            top: 0; bottom: 0; left: 0; right: 0;
+        }
+
+        /* Animated Gradients & Glowing Effects */
+        .glow-text-purple { text-shadow: 0 0 15px rgba(168, 85, 247, 0.6); }
+        .glow-text-yellow { text-shadow: 0 0 15px rgba(245, 158, 11, 0.7); }
+        
+        .glow-card {
+            box-shadow: 0 10px 30px -10px rgba(99, 102, 241, 0.3),
+                        0 0 20px 0px rgba(236, 72, 153, 0.2);
+        }
+
+        .btn-gradient-primary {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #d946ef 100%);
+            transition: all 0.2s ease;
+        }
+        .btn-gradient-primary:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 10px 25px -5px rgba(124, 58, 237, 0.6);
+        }
+        .btn-gradient-primary:active { transform: translateY(1px) scale(0.98); }
+
+        .btn-gradient-orange {
+            background: linear-gradient(135deg, #ea580c 0%, #d97706 50%, #eab308 100%);
+        }
+
+        /* Crossword Tile Custom Styles */
+        .grid-cell {
+            position: relative;
+            aspect-ratio: 1;
+            transition: all 0.15s ease;
+        }
+        .cell-black {
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+        }
+        .cell-active {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 100%);
+            border: 1.5px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .cell-active:hover {
+            border-color: #38bdf8;
+            background: rgba(56, 189, 248, 0.15);
+        }
+        .cell-focused {
+            border-color: #f43f5e !important;
+            background: rgba(244, 63, 94, 0.3) !important;
+            box-shadow: 0 0 12px rgba(244, 63, 94, 0.6);
+            transform: scale(1.05);
+            z-index: 10;
+        }
+        .cell-word-highlight {
+            background: rgba(99, 102, 241, 0.35) !important;
+            border-color: #6366f1 !important;
+        }
+        .cell-correct {
+            background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
+            border-color: #34d399 !important;
+            color: #ffffff;
+            animation: pulse-success 0.4s ease-out;
+        }
+
+        /* Shake animation on wrong answer */
+        .shake-wrong {
+            animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+            border-color: #ef4444 !important;
+        }
+
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-2px, 0, 0); }
+            20%, 80% { transform: translate3d(4px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-6px, 0, 0); }
+            40%, 60% { transform: translate3d(6px, 0, 0); }
+        }
+
+        @keyframes pulse-success {
+            0% { transform: scale(0.9); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .cell-number {
+            position: absolute;
+            top: 1px;
+            left: 3px;
+            font-size: 0.55rem;
+            font-weight: 800;
+            color: rgba(255, 255, 255, 0.7);
+            pointer-events: none;
+        }
+
+        /* Virtual Touch Keyboard Keys */
+        .key-btn {
+            background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            border-radius: 6px;
+            font-weight: 700;
+            transition: all 0.1s ease;
+            touch-action: manipulation;
+        }
+        .key-btn:active {
+            background: #6366f1;
+            transform: scale(0.92);
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 10px; }
+    </style>
+</head>
+<body class="w-screen h-screen flex items-center justify-center">
+
+    <!-- MAIN 16:9 SCREEN CONTAINER -->
+    <div class="aspect-16-9-wrapper flex flex-col p-3 md:p-4 overflow-hidden relative">
+
+        <!-- HEADER BAR -->
+        <header class="flex justify-between items-center bg-slate-900/70 backdrop-blur-md px-5 py-2.5 rounded-2xl border border-white/10 mb-3 shadow-xl">
+            <!-- Brand / Logo -->
+            <div class="flex items-center space-x-3">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-pink-500 to-purple-600 flex items-center justify-center text-lg shadow-lg shadow-purple-500/30">
+                    <i class="fa-solid fa-bullhorn text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-black tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-pink-400 to-yellow-300">
+                        TTS MARKETING 4P (DUAL SCREEN)
+                    </h1>
+                    <p class="text-[10px] text-slate-400 font-medium">Model 4P: Product, Price, Place, Promotion</p>
+                </div>
+            </div>
+
+            <!-- Global Timer & Status -->
+            <div id="game-stats-bar" class="hidden flex items-center space-x-6">
+                <!-- Timer -->
+                <div class="flex items-center space-x-2 bg-slate-800/80 px-4 py-1 rounded-xl border border-slate-700">
+                    <i class="fa-solid fa-stopwatch text-yellow-400 text-base animate-pulse"></i>
+                    <span id="timer-display" class="font-mono text-base font-extrabold text-yellow-300">03:00</span>
+                </div>
+            </div>
+
+            <!-- Action Controls -->
+            <div class="flex items-center space-x-2">
+                <button id="btn-sound" onclick="toggleSound()" class="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 border border-white/10 flex items-center justify-center text-slate-300 transition">
+                    <i class="fa-solid fa-volume-high text-xs"></i>
+                </button>
+                <button onclick="showHomeMenu()" class="w-9 h-9 rounded-xl bg-rose-600/80 hover:bg-rose-500 border border-rose-400/30 flex items-center justify-center text-white transition">
+                    <i class="fa-solid fa-house text-xs"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- MAIN VIEWPORT CONTENT (Dynamic Screens) -->
+        <main class="flex-1 relative flex items-center justify-center overflow-hidden">
+            
+            <!-- SCREEN 1: MAIN MENU (Mode & Difficulty Selection) -->
+            <section id="screen-menu" class="w-full h-full flex flex-col items-center justify-center space-y-5 p-2">
+                <div class="text-center space-y-1.5 max-w-2xl">
+                    <span class="px-3 py-1 bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                        E-Learning Smartboard Interactive Edition
+                    </span>
+                    <h2 class="text-3xl md:text-4xl font-black tracking-tight text-white glow-text-purple">
+                        Teka-Teki Silang Pemasaran 4P
+                    </h2>
+                    <p class="text-slate-300 text-xs md:text-sm">
+                        Uji pemahaman kelompokmu mengenai <span class="text-cyan-400 font-bold">Product</span>, <span class="text-pink-400 font-bold">Price</span>, <span class="text-yellow-400 font-bold">Place</span>, dan <span class="text-emerald-400 font-bold">Promotion</span>!
+                    </p>
+                </div>
+
+                <!-- Selection Card -->
+                <div class="bg-slate-900/80 backdrop-blur-xl border border-white/15 rounded-3xl p-5 md:p-6 w-full max-w-3xl glow-card grid grid-cols-1 md:grid-cols-2 gap-5">
+                    
+                    <!-- Mode Selection -->
+                    <div class="space-y-2">
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider">
+                            <i class="fa-solid fa-gamepad text-purple-400 mr-1"></i> Mode Permainan
+                        </label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <button id="mode-single" onclick="selectMode('single')" class="mode-btn p-3 rounded-2xl border-2 border-slate-700 bg-slate-800/50 text-center hover:border-purple-400 transition flex flex-col items-center justify-center space-y-1">
+                                <i class="fa-solid fa-user text-xl text-purple-300"></i>
+                                <span class="font-bold text-xs text-white">1 Layar (Solo)</span>
+                            </button>
+                            <button id="mode-dual" onclick="selectMode('dual')" class="mode-btn active p-3 rounded-2xl border-2 border-purple-500 bg-purple-600/20 text-center hover:border-purple-400 transition flex flex-col items-center justify-center space-y-1">
+                                <i class="fa-solid fa-columns text-xl text-pink-400"></i>
+                                <span class="font-bold text-xs text-slate-200">2 Layar (Split-Screen)</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Level Selection -->
+                    <div class="space-y-2">
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider">
+                            <i class="fa-solid fa-layer-group text-yellow-400 mr-1"></i> Tingkat Kesulitan
+                        </label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button id="lvl-easy" onclick="selectLevel('easy')" class="lvl-btn active p-2.5 rounded-xl border-2 border-emerald-500 bg-emerald-600/20 text-center hover:border-emerald-400 transition">
+                                <div class="font-black text-xs text-emerald-300">MUDAH</div>
+                                <div class="text-[9px] text-emerald-200/70">Grid 8x8 • 5 Mnt</div>
+                            </button>
+                            <button id="lvl-medium" onclick="selectLevel('medium')" class="lvl-btn p-2.5 rounded-xl border-2 border-slate-700 bg-slate-800/50 text-center hover:border-yellow-400 transition">
+                                <div class="font-black text-xs text-slate-300">SEDANG</div>
+                                <div class="text-[9px] text-slate-400">Grid 10x10 • 4 Mnt</div>
+                            </button>
+                            <button id="lvl-hard" onclick="selectLevel('hard')" class="lvl-btn p-2.5 rounded-xl border-2 border-slate-700 bg-slate-800/50 text-center hover:border-rose-400 transition">
+                                <div class="font-black text-xs text-slate-300">SULIT</div>
+                                <div class="text-[9px] text-slate-400">Grid 12x12 • 3.5 Mnt</div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Team Names (If Dual Mode) -->
+                    <div id="team-names-section" class="col-span-1 md:col-span-2 grid grid-cols-2 gap-4 border-t border-white/10 pt-3">
+                        <div>
+                            <label class="text-xs text-cyan-300 font-bold block mb-1">Nama Tim / Kelompok 1 (Kiri)</label>
+                            <input type="text" id="input-team1" value="Kelompok A" class="w-full bg-slate-800 border border-cyan-500/40 rounded-xl px-3 py-1.5 text-xs font-bold text-white focus:outline-none focus:border-cyan-400">
+                        </div>
+                        <div>
+                            <label class="text-xs text-pink-300 font-bold block mb-1">Nama Tim / Kelompok 2 (Kanan)</label>
+                            <input type="text" id="input-team2" value="Kelompok B" class="w-full bg-slate-800 border border-pink-500/40 rounded-xl px-3 py-1.5 text-xs font-bold text-white focus:outline-none focus:border-pink-400">
+                        </div>
+                    </div>
+
+                    <!-- Start Button -->
+                    <div class="col-span-1 md:col-span-2 pt-1">
+                        <button onclick="startGame()" class="w-full py-3.5 rounded-2xl btn-gradient-primary text-white font-extrabold text-base shadow-lg flex items-center justify-center space-x-2 tracking-wide cursor-pointer">
+                            <i class="fa-solid fa-play text-lg"></i>
+                            <span>MULAI TANDING INTERAKTIF</span>
+                        </button>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- SCREEN 2: GAMEPLAY DUAL/SINGLE AREA -->
+            <section id="screen-game" class="w-full h-full flex gap-3 p-1 hidden">
+                
+                <!-- TEAM 1 (PLAYER 1 / LEFT SCREEN) -->
+                <div id="player-container-0" class="flex-1 flex flex-col bg-slate-900/70 backdrop-blur-md rounded-2xl border-2 border-cyan-500/40 p-2 relative overflow-hidden">
+                    
+                    <!-- Team Header Info & Feedback Overlay -->
+                    <div class="flex justify-between items-center bg-cyan-950/60 border border-cyan-500/40 rounded-xl px-3 py-1.5 mb-2">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-3 h-3 rounded-full bg-cyan-400 animate-pulse"></span>
+                            <span id="team-name-0" class="font-extrabold text-xs text-cyan-300">Kelompok A</span>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <div class="flex space-x-1 text-rose-500 text-xs" id="lives-0">
+                                <i class="fa-solid fa-heart"></i><i class="fa-solid fa-heart"></i><i class="fa-solid fa-heart"></i>
+                            </div>
+                            <span id="score-0" class="font-black text-cyan-300 text-sm">0 Pts</span>
+                        </div>
+                    </div>
+
+                    <!-- Error Alert Banner -->
+                    <div id="alert-wrong-0" class="hidden absolute inset-x-2 top-12 z-30 bg-rose-600/95 text-white font-black text-center py-2 rounded-xl border border-rose-400 shadow-2xl animate-bounce">
+                        ❌ JAWABAN SALAH / TIDAK NYAMBUNG! (ULANGI)
+                    </div>
+
+                    <!-- Active Clue Bar -->
+                    <div class="w-full bg-slate-950/80 border border-cyan-500/20 rounded-xl px-3 py-1.5 mb-2 flex items-center justify-between min-h-[42px]">
+                        <div class="flex items-center space-x-2 overflow-hidden">
+                            <span id="badge-0" class="px-2 py-0.5 bg-cyan-600 text-white font-black text-[10px] rounded-md shrink-0">1 Mendatar</span>
+                            <p id="clue-text-0" class="text-[11px] font-semibold text-cyan-100 truncate">Pilih petunjuk untuk mulai.</p>
+                        </div>
+                        <div class="flex items-center space-x-1 shrink-0 ml-1">
+                            <button onclick="promptFullWord(0)" class="px-2 py-1 bg-purple-500/20 border border-purple-500/40 text-purple-300 rounded-md font-bold text-[10px] hover:bg-purple-500/30">
+                                ⌨️ Ketik Kata
+                            </button>
+                            <button onclick="revealFreeLetter(0)" class="px-2 py-1 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 rounded-md font-bold text-[10px] hover:bg-emerald-500/30">
+                                🔤 Huruf Bantu
+                            </button>
+                            <button onclick="useHint(0)" class="px-2 py-1 bg-amber-500/20 border border-amber-500/40 text-amber-300 rounded-md font-bold text-[10px]">
+                                💡 Buka 1 Kotak
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Grid & Clues Split Section -->
+                    <div class="flex-1 grid grid-cols-12 gap-2 overflow-hidden">
+                        <!-- Crossword Grid Area -->
+                        <div class="col-span-7 bg-slate-950/60 rounded-xl p-2 border border-white/5 flex items-center justify-center overflow-hidden">
+                            <div id="grid-container-0" class="grid gap-1 w-full max-w-[280px] aspect-square"></div>
+                        </div>
+
+                        <!-- Clues List Sidebar -->
+                        <div class="col-span-5 bg-slate-950/60 rounded-xl p-2 border border-white/5 flex flex-col overflow-hidden">
+                            <!-- Direction Tabs -->
+                            <div class="flex bg-slate-900 rounded-lg p-0.5 text-[10px] font-bold mb-1.5 border border-white/5">
+                                <button id="tab-across-0" onclick="switchClueTab(0, 'across')" class="flex-1 py-0.5 bg-cyan-600 text-white rounded text-center">Mendatar</button>
+                                <button id="tab-down-0" onclick="switchClueTab(0, 'down')" class="flex-1 py-0.5 text-slate-400 rounded text-center">Menurun</button>
+                            </div>
+                            <!-- Clue Cards Scroll Area -->
+                            <div id="clues-list-0" class="flex-1 overflow-y-auto space-y-1 pr-1"></div>
+                        </div>
+                    </div>
+
+                    <!-- Virtual Touch Keyboard Area -->
+                    <div class="mt-2 bg-slate-950/80 rounded-xl p-1.5 border border-cyan-500/20">
+                        <div class="grid grid-cols-10 gap-1 mb-1">
+                            <button onclick="typeKey(0, 'Q')" class="key-btn py-1 text-[11px]">Q</button>
+                            <button onclick="typeKey(0, 'W')" class="key-btn py-1 text-[11px]">W</button>
+                            <button onclick="typeKey(0, 'E')" class="key-btn py-1 text-[11px]">E</button>
+                            <button onclick="typeKey(0, 'R')" class="key-btn py-1 text-[11px]">R</button>
+                            <button onclick="typeKey(0, 'T')" class="key-btn py-1 text-[11px]">T</button>
+                            <button onclick="typeKey(0, 'Y')" class="key-btn py-1 text-[11px]">Y</button>
+                            <button onclick="typeKey(0, 'U')" class="key-btn py-1 text-[11px]">U</button>
+                            <button onclick="typeKey(0, 'I')" class="key-btn py-1 text-[11px]">I</button>
+                            <button onclick="typeKey(0, 'O')" class="key-btn py-1 text-[11px]">O</button>
+                            <button onclick="typeKey(0, 'P')" class="key-btn py-1 text-[11px]">P</button>
+                        </div>
+                        <div class="grid grid-cols-9 gap-1 mb-1 px-2">
+                            <button onclick="typeKey(0, 'A')" class="key-btn py-1 text-[11px]">A</button>
+                            <button onclick="typeKey(0, 'S')" class="key-btn py-1 text-[11px]">S</button>
+                            <button onclick="typeKey(0, 'D')" class="key-btn py-1 text-[11px]">D</button>
+                            <button onclick="typeKey(0, 'F')" class="key-btn py-1 text-[11px]">F</button>
+                            <button onclick="typeKey(0, 'G')" class="key-btn py-1 text-[11px]">G</button>
+                            <button onclick="typeKey(0, 'H')" class="key-btn py-1 text-[11px]">H</button>
+                            <button onclick="typeKey(0, 'J')" class="key-btn py-1 text-[11px]">J</button>
+                            <button onclick="typeKey(0, 'K')" class="key-btn py-1 text-[11px]">K</button>
+                            <button onclick="typeKey(0, 'L')" class="key-btn py-1 text-[11px]">L</button>
+                        </div>
+                        <div class="grid grid-cols-9 gap-1">
+                            <button onclick="typeKey(0, 'Z')" class="key-btn py-1 text-[11px]">Z</button>
+                            <button onclick="typeKey(0, 'X')" class="key-btn py-1 text-[11px]">X</button>
+                            <button onclick="typeKey(0, 'C')" class="key-btn py-1 text-[11px]">C</button>
+                            <button onclick="typeKey(0, 'V')" class="key-btn py-1 text-[11px]">V</button>
+                            <button onclick="typeKey(0, 'B')" class="key-btn py-1 text-[11px]">B</button>
+                            <button onclick="typeKey(0, 'N')" class="key-btn py-1 text-[11px]">N</button>
+                            <button onclick="typeKey(0, 'M')" class="key-btn py-1 text-[11px]">M</button>
+                            <button onclick="typeKey(0, 'BACKSPACE')" class="key-btn py-1 col-span-2 text-[10px] bg-rose-950/60 text-rose-300 border-rose-500/30">⌫ HAPUS</button>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- TEAM 2 (PLAYER 2 / RIGHT SCREEN - Shown in Dual Mode) -->
+                <div id="player-container-1" class="flex-1 flex flex-col bg-slate-900/70 backdrop-blur-md rounded-2xl border-2 border-pink-500/40 p-2 relative overflow-hidden">
+                    
+                    <!-- Team Header Info & Feedback Overlay -->
+                    <div class="flex justify-between items-center bg-pink-950/60 border border-pink-500/40 rounded-xl px-3 py-1.5 mb-2">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-3 h-3 rounded-full bg-pink-400 animate-pulse"></span>
+                            <span id="team-name-1" class="font-extrabold text-xs text-pink-300">Kelompok B</span>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <div class="flex space-x-1 text-rose-500 text-xs" id="lives-1">
+                                <i class="fa-solid fa-heart"></i><i class="fa-solid fa-heart"></i><i class="fa-solid fa-heart"></i>
+                            </div>
+                            <span id="score-1" class="font-black text-pink-300 text-sm">0 Pts</span>
+                        </div>
+                    </div>
+
+                    <!-- Error Alert Banner -->
+                    <div id="alert-wrong-1" class="hidden absolute inset-x-2 top-12 z-30 bg-rose-600/95 text-white font-black text-center py-2 rounded-xl border border-rose-400 shadow-2xl animate-bounce">
+                        ❌ JAWABAN SALAH / TIDAK NYAMBUNG! (ULANGI)
+                    </div>
+
+                    <!-- Active Clue Bar -->
+                    <div class="w-full bg-slate-950/80 border border-pink-500/20 rounded-xl px-3 py-1.5 mb-2 flex items-center justify-between min-h-[42px]">
+                        <div class="flex items-center space-x-2 overflow-hidden">
+                            <span id="badge-1" class="px-2 py-0.5 bg-pink-600 text-white font-black text-[10px] rounded-md shrink-0">1 Mendatar</span>
+                            <p id="clue-text-1" class="text-[11px] font-semibold text-pink-100 truncate">Pilih petunjuk untuk mulai.</p>
+                        </div>
+                        <div class="flex items-center space-x-1 shrink-0 ml-1">
+                            <button onclick="promptFullWord(1)" class="px-2 py-1 bg-purple-500/20 border border-purple-500/40 text-purple-300 rounded-md font-bold text-[10px] hover:bg-purple-500/30">
+                                ⌨️ Ketik Kata
+                            </button>
+                            <button onclick="revealFreeLetter(1)" class="px-2 py-1 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 rounded-md font-bold text-[10px] hover:bg-emerald-500/30">
+                                🔤 Huruf Bantu
+                            </button>
+                            <button onclick="useHint(1)" class="px-2 py-1 bg-amber-500/20 border border-amber-500/40 text-amber-300 rounded-md font-bold text-[10px]">
+                                💡 Buka 1 Kotak
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Grid & Clues Split Section -->
+                    <div class="flex-1 grid grid-cols-12 gap-2 overflow-hidden">
+                        <!-- Crossword Grid Area -->
+                        <div class="col-span-7 bg-slate-950/60 rounded-xl p-2 border border-white/5 flex items-center justify-center overflow-hidden">
+                            <div id="grid-container-1" class="grid gap-1 w-full max-w-[280px] aspect-square"></div>
+                        </div>
+
+                        <!-- Clues List Sidebar -->
+                        <div class="col-span-5 bg-slate-950/60 rounded-xl p-2 border border-white/5 flex flex-col overflow-hidden">
+                            <!-- Direction Tabs -->
+                            <div class="flex bg-slate-900 rounded-lg p-0.5 text-[10px] font-bold mb-1.5 border border-white/5">
+                                <button id="tab-across-1" onclick="switchClueTab(1, 'across')" class="flex-1 py-0.5 bg-pink-600 text-white rounded text-center">Mendatar</button>
+                                <button id="tab-down-1" onclick="switchClueTab(1, 'down')" class="flex-1 py-0.5 text-slate-400 rounded text-center">Menurun</button>
+                            </div>
+                            <!-- Clue Cards Scroll Area -->
+                            <div id="clues-list-1" class="flex-1 overflow-y-auto space-y-1 pr-1"></div>
+                        </div>
+                    </div>
+
+                    <!-- Virtual Touch Keyboard Area -->
+                    <div class="mt-2 bg-slate-950/80 rounded-xl p-1.5 border border-pink-500/20">
+                        <div class="grid grid-cols-10 gap-1 mb-1">
+                            <button onclick="typeKey(1, 'Q')" class="key-btn py-1 text-[11px]">Q</button>
+                            <button onclick="typeKey(1, 'W')" class="key-btn py-1 text-[11px]">W</button>
+                            <button onclick="typeKey(1, 'E')" class="key-btn py-1 text-[11px]">E</button>
+                            <button onclick="typeKey(1, 'R')" class="key-btn py-1 text-[11px]">R</button>
+                            <button onclick="typeKey(1, 'T')" class="key-btn py-1 text-[11px]">T</button>
+                            <button onclick="typeKey(1, 'Y')" class="key-btn py-1 text-[11px]">Y</button>
+                            <button onclick="typeKey(1, 'U')" class="key-btn py-1 text-[11px]">U</button>
+                            <button onclick="typeKey(1, 'I')" class="key-btn py-1 text-[11px]">I</button>
+                            <button onclick="typeKey(1, 'O')" class="key-btn py-1 text-[11px]">O</button>
+                            <button onclick="typeKey(1, 'P')" class="key-btn py-1 text-[11px]">P</button>
+                        </div>
+                        <div class="grid grid-cols-9 gap-1 mb-1 px-2">
+                            <button onclick="typeKey(1, 'A')" class="key-btn py-1 text-[11px]">A</button>
+                            <button onclick="typeKey(1, 'S')" class="key-btn py-1 text-[11px]">S</button>
+                            <button onclick="typeKey(1, 'D')" class="key-btn py-1 text-[11px]">D</button>
+                            <button onclick="typeKey(1, 'F')" class="key-btn py-1 text-[11px]">F</button>
+                            <button onclick="typeKey(1, 'G')" class="key-btn py-1 text-[11px]">G</button>
+                            <button onclick="typeKey(1, 'H')" class="key-btn py-1 text-[11px]">H</button>
+                            <button onclick="typeKey(1, 'J')" class="key-btn py-1 text-[11px]">J</button>
+                            <button onclick="typeKey(1, 'K')" class="key-btn py-1 text-[11px]">K</button>
+                            <button onclick="typeKey(1, 'L')" class="key-btn py-1 text-[11px]">L</button>
+                        </div>
+                        <div class="grid grid-cols-9 gap-1">
+                            <button onclick="typeKey(1, 'Z')" class="key-btn py-1 text-[11px]">Z</button>
+                            <button onclick="typeKey(1, 'X')" class="key-btn py-1 text-[11px]">X</button>
+                            <button onclick="typeKey(1, 'C')" class="key-btn py-1 text-[11px]">C</button>
+                            <button onclick="typeKey(1, 'V')" class="key-btn py-1 text-[11px]">V</button>
+                            <button onclick="typeKey(1, 'B')" class="key-btn py-1 text-[11px]">B</button>
+                            <button onclick="typeKey(1, 'N')" class="key-btn py-1 text-[11px]">N</button>
+                            <button onclick="typeKey(1, 'M')" class="key-btn py-1 text-[11px]">M</button>
+                            <button onclick="typeKey(1, 'BACKSPACE')" class="key-btn py-1 col-span-2 text-[10px] bg-rose-950/60 text-rose-300 border-rose-500/30">⌫ HAPUS</button>
+                        </div>
+                    </div>
+
+                </div>
+
+            </section>
+
+            <!-- SCREEN 3: WIN / GAME OVER PODIUM CELEBRATION -->
+            <section id="screen-result" class="w-full h-full flex flex-col items-center justify-center space-y-6 p-4 hidden relative z-20">
+                <div class="bg-slate-900/90 backdrop-blur-2xl border border-white/20 rounded-3xl p-6 max-w-xl w-full text-center space-y-5 shadow-2xl glow-card">
+                    <!-- Trophy Icon -->
+                    <div class="relative inline-block">
+                        <div class="w-20 h-20 rounded-3xl bg-gradient-to-tr from-amber-400 to-yellow-200 flex items-center justify-center text-4xl text-amber-900 shadow-xl shadow-yellow-500/30 mx-auto animate-bounce">
+                            <i class="fa-solid fa-trophy"></i>
+                        </div>
+                        <div class="absolute -top-2 -right-2 bg-pink-500 text-white rounded-full p-2 text-xs font-black">
+                            4P CHAMPION!
+                        </div>
+                    </div>
+
+                    <div>
+                        <h2 id="winner-title" class="text-2xl md:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-pink-400 to-cyan-300 glow-text-yellow">
+                            SELAMAT! KELOMPOK JUARA!
+                        </h2>
+                        <p id="winner-subtitle" class="text-slate-300 text-xs mt-1">Anda Berhasil Menguasai Strategi Pemasaran 4P</p>
+                    </div>
+
+                    <!-- Final Scores Table -->
+                    <div id="final-scoreboard" class="bg-slate-950/80 rounded-2xl p-3 border border-slate-800 space-y-2">
+                        <!-- Score Row 1 -->
+                        <div class="flex justify-between items-center bg-slate-900 px-4 py-2.5 rounded-xl border border-cyan-500/30">
+                            <div class="flex items-center space-x-3">
+                                <span class="w-6 h-6 rounded-lg bg-cyan-500/20 text-cyan-400 font-black flex items-center justify-center text-xs">#1</span>
+                                <span id="final-team1-name" class="font-bold text-white text-sm">Kelompok 1</span>
+                            </div>
+                            <span id="final-team1-score" class="font-black text-cyan-300 text-lg">450 Pts</span>
+                        </div>
+                        <!-- Score Row 2 (If Dual Mode) -->
+                        <div id="final-team2-row" class="flex justify-between items-center bg-slate-900 px-4 py-2.5 rounded-xl border border-pink-500/30 hidden">
+                            <div class="flex items-center space-x-3">
+                                <span class="w-6 h-6 rounded-lg bg-pink-500/20 text-pink-400 font-black flex items-center justify-center text-xs">#2</span>
+                                <span id="final-team2-name" class="font-bold text-white text-sm">Kelompok 2</span>
+                            </div>
+                            <span id="final-team2-score" class="font-black text-pink-300 text-lg">320 Pts</span>
+                        </div>
+                    </div>
+
+                    <!-- Replay Button -->
+                    <button onclick="showHomeMenu()" class="w-full py-3 rounded-2xl btn-gradient-orange text-white font-extrabold text-sm shadow-lg flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-rotate-right"></i>
+                        <span>MAIN AGAIN / GANTI LEVEL</span>
+                    </button>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- AUDIO SYNTHESIZER & COMPLETE GAME LOGIC SCRIPT -->
+    <script>
+        /* ===================================================================
+           GLOBAL STATE & CONFIGURATION
+           =================================================================== */
+        let currentMode = 'dual'; // 'single' or 'dual'
+        let currentLevel = 'easy'; // 'easy', 'medium', 'hard'
+        let isSoundOn = true;
+        let timerInterval = null;
+        let timeRemaining = 300;
+        let teamNames = ["Kelompok A", "Kelompok B"];
+
+        const QUESTION_BANK = {
+            easy: {
+                gridSize: 8,
+                timeLimit: 300,
+                words: [
+                    { number: 1, direction: 'across', word: 'PRODUCT', x: 0, y: 0, clue: 'Barang atau jasa yang dijual kepada pembeli (Elemen 4P).' },
+                    { number: 2, direction: 'across', word: 'PRICE', x: 0, y: 2, clue: 'Harga atau jumlah uang yang dibayar oleh konsumen.' },
+                    { number: 3, direction: 'down', word: 'PLACE', x: 0, y: 0, clue: 'Tempat atau saluran untuk menjual produk (Pasar/Toko).' },
+                    { number: 4, direction: 'down', word: 'MEREK', x: 5, y: 1, clue: 'Nama khusus usaha atau produk agar gampang diingat.' },
+                    { number: 5, direction: 'across', word: 'DISKON', x: 2, y: 5, clue: 'Potongan harga khusus untuk menarik pembeli (Promosi).' }
+                ]
+            },
+            medium: {
+                gridSize: 10,
+                timeLimit: 240,
+                words: [
+                    { number: 1, direction: 'across', word: 'PROMOTION', x: 0, y: 1, clue: 'Kegiatan mengenalkan produk lewat iklan atau media sosial.' },
+                    { number: 2, direction: 'down', word: 'KEMASAN', x: 2, y: 0, clue: 'Pembungkus produk yang menarik dan melindungi isi.' },
+                    { number: 3, direction: 'across', word: 'KANTIN', x: 1, y: 4, clue: 'Tempat jualan produk keripik singkong di sekolah.' },
+                    { number: 4, direction: 'down', word: 'BALADO', x: 6, y: 2, clue: 'Contoh pilihan varian rasa pedas manis pada keripik.' },
+                    { number: 5, direction: 'across', word: 'BROSUR', x: 3, y: 7, clue: 'Kertas cetakan kecil yang berisi informasi promosi produk.' },
+                    { number: 6, direction: 'down', word: 'PASAR', x: 8, y: 4, clue: 'Tempat bertemunya penjual dan pembeli.' }
+                ]
+            },
+            hard: {
+                gridSize: 12,
+                timeLimit: 210,
+                words: [
+                    { number: 1, direction: 'across', word: 'KUALITAS', x: 1, y: 1, clue: 'Mutu bahan dan kebersihan hasil akhir produk.' },
+                    { number: 2, direction: 'down', word: 'DISTRIBUSI', x: 3, y: 0, clue: 'Proses penyaluran barang (Place) sampai ke tangan konsumen.' },
+                    { number: 3, direction: 'across', word: 'TESTIMONI', x: 0, y: 5, clue: 'Ulasan atau kesan baik dari pembeli tentang produk kita.' },
+                    { number: 4, direction: 'down', word: 'RESELLER', x: 8, y: 2, clue: 'Teman yang membantu menjualkan kembali produk kita.' },
+                    { number: 5, direction: 'across', word: 'UNTUNG', x: 6, y: 8, clue: 'Kelebihan uang yang diperoleh dari harga jual dikurangi biaya.' },
+                    { number: 6, direction: 'down', word: 'LABEL', x: 10, y: 5, clue: 'Stiker pada kemasan yang berisi informasi nama dan tanggal.' }
+                ]
+            }
+        };
+
+        // State per Player (Index 0 = Left, Index 1 = Right)
+        let playerStates = [
+            { scores: 0, lives: 3, selectedCell: null, selectedWord: null, activeTab: 'across', gridData: [], wordList: [] },
+            { scores: 0, lives: 3, selectedCell: null, selectedWord: null, activeTab: 'across', gridData: [], wordList: [] }
+        ];
+
+        /* ===================================================================
+           SOUND SYNTHESIZER (Web Audio API)
+           =================================================================== */
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(type) {
+            if (!isSoundOn) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                if (type === 'click') {
+                    osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+                    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.05);
+                } else if (type === 'correct') {
+                    osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(659.25, audioCtx.currentTime + 0.15);
+                    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.2);
+                } else if (type === 'wrong') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(220, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(110, audioCtx.currentTime + 0.2);
+                    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.25);
+                } else if (type === 'win') {
+                    osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.4);
+                    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.5);
+                }
+            } catch (e) {
+                console.log('Audio Context Error', e);
+            }
+        }
+
+        function toggleSound() {
+            isSoundOn = !isSoundOn;
+            const btn = document.getElementById('btn-sound');
+            btn.innerHTML = isSoundOn ? '<i class="fa-solid fa-volume-high text-xs"></i>' : '<i class="fa-solid fa-volume-xmark text-xs text-rose-400"></i>';
+        }
+
+        /* ===================================================================
+           MENU & SELECTION CONTROLLERS
+           =================================================================== */
+        function selectMode(mode) {
+            playSound('click');
+            currentMode = mode;
+            document.querySelectorAll('.mode-btn').forEach(b => {
+                b.classList.remove('active', 'border-purple-500', 'bg-purple-600/20');
+                b.classList.add('border-slate-700', 'bg-slate-800/50');
+            });
+
+            const targetBtn = document.getElementById(`mode-${mode}`);
+            targetBtn.classList.add('active', 'border-purple-500', 'bg-purple-600/20');
+            targetBtn.classList.remove('border-slate-700', 'bg-slate-800/50');
+
+            const nameSec = document.getElementById('team-names-section');
+            if (mode === 'dual') {
+                nameSec.classList.remove('hidden');
+            } else {
+                nameSec.classList.add('hidden');
+            }
+        }
+
+        function selectLevel(lvl) {
+            playSound('click');
+            currentLevel = lvl;
+            document.querySelectorAll('.lvl-btn').forEach(b => {
+                b.classList.remove('active', 'border-emerald-500', 'bg-emerald-600/20', 'border-yellow-400', 'border-rose-400');
+                b.classList.add('border-slate-700', 'bg-slate-800/50');
+            });
+
+            const targetBtn = document.getElementById(`lvl-${lvl}`);
+            targetBtn.classList.add('active', 'border-emerald-500', 'bg-emerald-600/20');
+            targetBtn.classList.remove('border-slate-700', 'bg-slate-800/50');
+        }
+
+        function showHomeMenu() {
+            playSound('click');
+            clearInterval(timerInterval);
+            document.getElementById('screen-menu').classList.remove('hidden');
+            document.getElementById('screen-game').classList.add('hidden');
+            document.getElementById('screen-result').classList.add('hidden');
+            document.getElementById('game-stats-bar').classList.add('hidden');
+        }
+
+        /* ===================================================================
+           START GAME INITIALIZATION
+           =================================================================== */
+        function startGame() {
+            playSound('click');
+            
+            // Read Team Names
+            teamNames[0] = document.getElementById('input-team1').value || "Kelompok A";
+            teamNames[1] = document.getElementById('input-team2').value || "Kelompok B";
+
+            document.getElementById('team-name-0').innerText = teamNames[0];
+            document.getElementById('team-name-1').innerText = teamNames[1];
+
+            // Show Dual or Single Layout
+            const p2Container = document.getElementById('player-container-1');
+            if (currentMode === 'dual') {
+                p2Container.classList.remove('hidden');
+            } else {
+                p2Container.classList.add('hidden');
+            }
+
+            // Init Player States
+            const config = QUESTION_BANK[currentLevel];
+            timeRemaining = config.timeLimit;
+
+            for (let i = 0; i < 2; i++) {
+                playerStates[i] = {
+                    scores: 0,
+                    lives: 3,
+                    selectedCell: null,
+                    selectedWord: null,
+                    activeTab: 'across',
+                    wordList: JSON.parse(JSON.stringify(config.words)),
+                    gridData: buildGridData(config.gridSize, config.words)
+                };
+                updatePlayerHeader(i);
+                renderGrid(i, config.gridSize);
+                renderClues(i);
+                selectWord(i, playerStates[i].wordList[0]);
+            }
+
+            // Show Gameplay Viewport
+            document.getElementById('screen-menu').classList.add('hidden');
+            document.getElementById('screen-result').classList.add('hidden');
+            document.getElementById('screen-game').classList.remove('hidden');
+            document.getElementById('game-stats-bar').classList.remove('hidden');
+
+            startTimer();
+        }
+
+        function startTimer() {
+            clearInterval(timerInterval);
+            updateTimerDisplay();
+            timerInterval = setInterval(() => {
+                timeRemaining--;
+                updateTimerDisplay();
+                if (timeRemaining <= 0) {
+                    clearInterval(timerInterval);
+                    finishGame(false, "Waktu Habis!");
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const m = Math.floor(timeRemaining / 60).toString().padStart(2, '0');
+            const s = (timeRemaining % 60).toString().padStart(2, '0');
+            document.getElementById('timer-display').innerText = `${m}:${s}`;
+        }
+
+        /* ===================================================================
+           GRID BUILDER & RENDER ENGINE
+           =================================================================== */
+        function buildGridData(size, words) {
+            const grid = Array(size).fill(null).map(() => 
+                Array(size).fill(null).map(() => ({
+                    isActive: false,
+                    correctLetter: '',
+                    userLetter: '',
+                    number: null,
+                    isSolved: false,
+                    words: []
+                }))
+            );
+
+            words.forEach(w => {
+                for (let i = 0; i < w.word.length; i++) {
+                    const gx = w.direction === 'across' ? w.x + i : w.x;
+                    const gy = w.direction === 'down' ? w.y + i : w.y;
+                    
+                    grid[gy][gx].isActive = true;
+                    grid[gy][gx].correctLetter = w.word[i];
+                    grid[gy][gx].words.push(w);
+
+                    if (i === 0) {
+                        grid[gy][gx].number = w.number;
+                    }
+                }
+            });
+
+            return grid;
+        }
+
+        function renderGrid(pIdx, size) {
+            const container = document.getElementById(`grid-container-${pIdx}`);
+            container.innerHTML = '';
+            container.style.gridTemplateColumns = `repeat(${size}, minmax(0, 1fr))`;
+
+            const pState = playerStates[pIdx];
+
+            for (let y = 0; y < size; y++) {
+                for (let x = 0; x < size; x++) {
+                    const cellData = pState.gridData[y][x];
+                    const cellEl = document.createElement('div');
+                    cellEl.id = `cell-${pIdx}-${y}-${x}`;
+                    cellEl.className = `grid-cell ${cellData.isActive ? 'cell-active' : 'cell-black'}`;
+
+                    if (cellData.isActive) {
+                        if (cellData.number) {
+                            const numSpan = document.createElement('span');
+                            numSpan.className = 'cell-number';
+                            numSpan.innerText = cellData.number;
+                            cellEl.appendChild(numSpan);
+                        }
+
+                        const textSpan = document.createElement('span');
+                        textSpan.id = `cell-text-${pIdx}-${y}-${x}`;
+                        textSpan.className = 'w-full h-full flex items-center justify-center font-black text-xs md:text-sm text-white';
+                        textSpan.innerText = cellData.userLetter;
+                        cellEl.appendChild(textSpan);
+
+                        cellEl.onclick = () => onCellClicked(pIdx, x, y);
+                    }
+
+                    container.appendChild(cellEl);
+                }
+            }
+        }
+
+        function updatePlayerHeader(pIdx) {
+            const pState = playerStates[pIdx];
+            document.getElementById(`score-${pIdx}`).innerText = `${pState.scores} Pts`;
+
+            let hearts = '';
+            for (let i = 0; i < 3; i++) {
+                if (i < pState.lives) {
+                    hearts += '<i class="fa-solid fa-heart"></i>';
+                } else {
+                    hearts += '<i class="fa-regular fa-heart opacity-30"></i>';
+                }
+            }
+            document.getElementById(`lives-${pIdx}`).innerHTML = hearts;
+        }
+
+        /* ===================================================================
+           CLUES & HIGHLIGHT LOGIC
+           =================================================================== */
+        function switchClueTab(pIdx, tab) {
+            playSound('click');
+            playerStates[pIdx].activeTab = tab;
+            const btnAcross = document.getElementById(`tab-across-${pIdx}`);
+            const btnDown = document.getElementById(`tab-down-${pIdx}`);
+
+            if (tab === 'across') {
+                btnAcross.className = `flex-1 py-0.5 ${pIdx===0?'bg-cyan-600':'bg-pink-600'} text-white rounded text-center font-bold`;
+                btnDown.className = 'flex-1 py-0.5 text-slate-400 rounded text-center font-bold';
+            } else {
+                btnDown.className = `flex-1 py-0.5 ${pIdx===0?'bg-cyan-600':'bg-pink-600'} text-white rounded text-center font-bold`;
+                btnAcross.className = 'flex-1 py-0.5 text-slate-400 rounded text-center font-bold';
+            }
+            renderClues(pIdx);
+        }
+
+        function renderClues(pIdx) {
+            const container = document.getElementById(`clues-list-${pIdx}`);
+            container.innerHTML = '';
+            const pState = playerStates[pIdx];
+            const filteredWords = pState.wordList.filter(w => w.direction === pState.activeTab);
+
+            filteredWords.forEach(w => {
+                const isSelected = pState.selectedWord && pState.selectedWord.number === w.number && pState.selectedWord.direction === w.direction;
+                const card = document.createElement('div');
+                card.className = `p-1.5 rounded-lg border text-[11px] cursor-pointer transition ${
+                    w.isSolved ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-300' :
+                    isSelected ? 'bg-purple-600/30 border-purple-400 text-white font-bold' :
+                    'bg-slate-900/60 border-white/5 text-slate-300 hover:border-white/20'
+                }`;
+
+                card.innerHTML = `
+                    <div class="flex items-center space-x-1">
+                        <span class="font-extrabold text-[10px] ${w.isSolved ? 'text-emerald-400' : 'text-cyan-400'}">${w.number}.</span>
+                        <span class="line-clamp-2">${w.clue}</span>
+                    </div>
+                `;
+
+                card.onclick = () => selectWord(pIdx, w);
+                container.appendChild(card);
+            });
+        }
+
+        function onCellClicked(pIdx, x, y) {
+            playSound('click');
+            const pState = playerStates[pIdx];
+            const cell = pState.gridData[y][x];
+
+            if (!cell.isActive) return;
+
+            if (cell.words.length === 1) {
+                selectWord(pIdx, cell.words[0]);
+            } else if (cell.words.length > 1) {
+                if (pState.selectedWord && pState.selectedWord.number === cell.words[0].number && pState.selectedWord.direction === cell.words[0].direction) {
+                    selectWord(pIdx, cell.words[1]);
+                } else {
+                    selectWord(pIdx, cell.words[0]);
+                }
+            }
+
+            pState.selectedCell = { x, y };
+            highlightCells(pIdx);
+        }
+
+        function selectWord(pIdx, word) {
+            const pState = playerStates[pIdx];
+            pState.selectedWord = word;
+            pState.selectedCell = { x: word.x, y: word.y };
+            pState.activeTab = word.direction;
+
+            switchClueTabUIOnly(pIdx, word.direction);
+            renderClues(pIdx);
+
+            document.getElementById(`badge-${pIdx}`).innerText = `${word.number} ${word.direction === 'across' ? 'Mendatar' : 'Menurun'}`;
+            document.getElementById(`clue-text-${pIdx}`).innerText = word.clue;
+
+            highlightCells(pIdx);
+        }
+
+        function switchClueTabUIOnly(pIdx, tab) {
+            const btnAcross = document.getElementById(`tab-across-${pIdx}`);
+            const btnDown = document.getElementById(`tab-down-${pIdx}`);
+            if (tab === 'across') {
+                btnAcross.className = `flex-1 py-0.5 ${pIdx===0?'bg-cyan-600':'bg-pink-600'} text-white rounded text-center font-bold`;
+                btnDown.className = 'flex-1 py-0.5 text-slate-400 rounded text-center font-bold';
+            } else {
+                btnDown.className = `flex-1 py-0.5 ${pIdx===0?'bg-cyan-600':'bg-pink-600'} text-white rounded text-center font-bold`;
+                btnAcross.className = 'flex-1 py-0.5 text-slate-400 rounded text-center font-bold';
+            }
+        }
+
+        function highlightCells(pIdx) {
+            const pState = playerStates[pIdx];
+            const size = QUESTION_BANK[currentLevel].gridSize;
+
+            for (let y = 0; y < size; y++) {
+                for (let x = 0; x < size; x++) {
+                    const el = document.getElementById(`cell-${pIdx}-${y}-${x}`);
+                    if (!el) continue;
+
+                    const cellData = pState.gridData[y][x];
+                    if (!cellData.isActive) continue;
+
+                    el.classList.remove('cell-focused', 'cell-word-highlight');
+
+                    if (cellData.isSolved) {
+                        el.classList.add('cell-correct');
+                    }
+                }
+            }
+
+            if (pState.selectedWord) {
+                const w = pState.selectedWord;
+                for (let i = 0; i < w.word.length; i++) {
+                    const gx = w.direction === 'across' ? w.x + i : w.x;
+                    const gy = w.direction === 'down' ? w.y + i : w.y;
+                    const el = document.getElementById(`cell-${pIdx}-${gy}-${gx}`);
+
+                    if (el && !pState.gridData[gy][gx].isSolved) {
+                        el.classList.add('cell-word-highlight');
+                    }
+                }
+            }
+
+            if (pState.selectedCell) {
+                const { x, y } = pState.selectedCell;
+                const el = document.getElementById(`cell-${pIdx}-${y}-${x}`);
+                if (el) el.classList.add('cell-focused');
+            }
+        }
+
+        /* ===================================================================
+           TOUCH KEYBOARD ENGINE & HINTS
+           =================================================================== */
+        function typeKey(pIdx, key) {
+            playSound('click');
+            const pState = playerStates[pIdx];
+
+            if (!pState.selectedWord || pState.selectedWord.isSolved) return;
+            if (!pState.selectedCell) return;
+
+            const { x, y } = pState.selectedCell;
+            const cell = pState.gridData[y][x];
+
+            if (key === 'BACKSPACE') {
+                if (!cell.isSolved) {
+                    cell.userLetter = '';
+                    document.getElementById(`cell-text-${pIdx}-${y}-${x}`).innerText = '';
+                }
+                moveCursor(pIdx, -1);
+            } else {
+                if (!cell.isSolved) {
+                    cell.userLetter = key;
+                    document.getElementById(`cell-text-${pIdx}-${y}-${x}`).innerText = key;
+                }
+                moveCursor(pIdx, 1);
+                checkWordCompletion(pIdx, pState.selectedWord);
+            }
+        }
+
+        function moveCursor(pIdx, dir) {
+            const pState = playerStates[pIdx];
+            const w = pState.selectedWord;
+            if (!w || !pState.selectedCell) return;
+
+            let currIdx = (w.direction === 'across') ? (pState.selectedCell.x - w.x) : (pState.selectedCell.y - w.y);
+            currIdx += dir;
+
+            if (currIdx >= 0 && currIdx < w.word.length) {
+                const nextX = w.direction === 'across' ? w.x + currIdx : w.x;
+                const nextY = w.direction === 'down' ? w.y + currIdx : w.y;
+                pState.selectedCell = { x: nextX, y: nextY };
+                highlightCells(pIdx);
+            }
+        }
+
+        function promptFullWord(pIdx) {
+            const pState = playerStates[pIdx];
+            if (!pState.selectedWord || pState.selectedWord.isSolved) return;
+
+            const w = pState.selectedWord;
+            const inputVal = prompt(`[${teamNames[pIdx]}] Masukkan kata jawaban untuk (${w.number} ${w.direction === 'across' ? 'Mendatar' : 'Menurun'}):`);
+
+            if (inputVal) {
+                const cleanInput = inputVal.trim().toUpperCase();
+                for (let i = 0; i < Math.min(cleanInput.length, w.word.length); i++) {
+                    const gx = w.direction === 'across' ? w.x + i : w.x;
+                    const gy = w.direction === 'down' ? w.y + i : w.y;
+                    const cell = pState.gridData[gy][gx];
+                    if (!cell.isSolved) {
+                        cell.userLetter = cleanInput[i];
+                        document.getElementById(`cell-text-${pIdx}-${gy}-${gx}`).innerText = cleanInput[i];
+                    }
+                }
+                checkWordCompletion(pIdx, w);
+            }
+        }
+
+        function autoSelectNextWord(pIdx) {
+            const pState = playerStates[pIdx];
+            const nextWord = pState.wordList.find(w => !w.isSolved);
+            if (nextWord) {
+                selectWord(pIdx, nextWord);
+            }
+        }
+
+        function checkWordCompletion(pIdx, w) {
+            const pState = playerStates[pIdx];
+            let isComplete = true;
+            let isCorrect = true;
+
+            for (let i = 0; i < w.word.length; i++) {
+                const gx = w.direction === 'across' ? w.x + i : w.x;
+                const gy = w.direction === 'down' ? w.y + i : w.y;
+                const cell = pState.gridData[gy][gx];
+
+                if (!cell.userLetter) {
+                    isComplete = false;
+                    break;
+                }
+                if (cell.userLetter !== cell.correctLetter) {
+                    isCorrect = false;
+                }
+            }
+
+            if (isComplete) {
+                if (isCorrect) {
+                    playSound('correct');
+                    pState.scores += 100;
+                    w.isSolved = true;
+
+                    for (let i = 0; i < w.word.length; i++) {
+                        const gx = w.direction === 'across' ? w.x + i : w.x;
+                        const gy = w.direction === 'down' ? w.y + i : w.y;
+                        pState.gridData[gy][gx].isSolved = true;
+                        document.getElementById(`cell-${pIdx}-${gy}-${gx}`).classList.add('cell-correct');
+                    }
+
+                    updatePlayerHeader(pIdx);
+                    renderClues(pIdx);
+
+                    setTimeout(() => {
+                        autoSelectNextWord(pIdx);
+                    }, 400);
+
+                    checkOverallVictory(pIdx);
+
+                } else {
+                    playSound('wrong');
+                    pState.lives--;
+                    updatePlayerHeader(pIdx);
+
+                    const alertEl = document.getElementById(`alert-wrong-${pIdx}`);
+                    alertEl.classList.remove('hidden');
+
+                    for (let i = 0; i < w.word.length; i++) {
+                        const gx = w.direction === 'across' ? w.x + i : w.x;
+                        const gy = w.direction === 'down' ? w.y + i : w.y;
+                        const el = document.getElementById(`cell-${pIdx}-${gy}-${gx}`);
+                        if (el && !pState.gridData[gy][gx].isSolved) {
+                            el.classList.add('shake-wrong');
+                        }
+                    }
+
+                    setTimeout(() => {
+                        alertEl.classList.add('hidden');
+                        for (let i = 0; i < w.word.length; i++) {
+                            const gx = w.direction === 'across' ? w.x + i : w.x;
+                            const gy = w.direction === 'down' ? w.y + i : w.y;
+                            const cell = pState.gridData[gy][gx];
+                            const el = document.getElementById(`cell-${pIdx}-${gy}-${gx}`);
+
+                            if (el) el.classList.remove('shake-wrong');
+
+                            if (!cell.isSolved) {
+                                cell.userLetter = '';
+                                document.getElementById(`cell-text-${pIdx}-${gy}-${gx}`).innerText = '';
+                            }
+                        }
+                        pState.selectedCell = { x: w.x, y: w.y };
+                        highlightCells(pIdx);
+                    }, 1200);
+
+                    if (pState.lives <= 0) {
+                        finishGame(false, `${teamNames[pIdx]} kehabisan nyawa!`);
+                    }
+                }
+            }
+        }
+
+        function revealFreeLetter(pIdx) {
+            const pState = playerStates[pIdx];
+            if (!pState.selectedWord || pState.selectedWord.isSolved) return;
+
+            const w = pState.selectedWord;
+            const unrevealedIndices = [];
+
+            for (let i = 0; i < w.word.length; i++) {
+                const gx = w.direction === 'across' ? w.x + i : w.x;
+                const gy = w.direction === 'down' ? w.y + i : w.y;
+                const cell = pState.gridData[gy][gx];
+
+                if (!cell.userLetter || cell.userLetter !== cell.correctLetter) {
+                    unrevealedIndices.push(i);
+                }
+            }
+
+            if (unrevealedIndices.length > 0) {
+                playSound('click');
+                const randIndex = unrevealedIndices[Math.floor(Math.random() * unrevealedIndices.length)];
+                const gx = w.direction === 'across' ? w.x + randIndex : w.x;
+                const gy = w.direction === 'down' ? w.y : w.y + randIndex;
+                const cell = pState.gridData[gy][gx];
+
+                cell.userLetter = cell.correctLetter;
+                document.getElementById(`cell-text-${pIdx}-${gy}-${gx}`).innerText = cell.correctLetter;
+                
+                checkWordCompletion(pIdx, w);
+            }
+        }
+
+        function useHint(pIdx) {
+            const pState = playerStates[pIdx];
+            if (!pState.selectedWord) return;
+            if (pState.scores < 20) {
+                playSound('wrong');
+                return;
+            }
+
+            playSound('click');
+            pState.scores -= 20;
+
+            for (let i = 0; i < pState.selectedWord.word.length; i++) {
+                const gx = pState.selectedWord.direction === 'across' ? pState.selectedWord.x + i : pState.selectedWord.x;
+                const gy = pState.selectedWord.direction === 'down' ? pState.selectedWord.y : pState.selectedWord.y + i;
+                const cell = pState.gridData[gy][gx];
+
+                if (!cell.userLetter || cell.userLetter !== cell.correctLetter) {
+                    cell.userLetter = cell.correctLetter;
+                    document.getElementById(`cell-text-${pIdx}-${gy}-${gx}`).innerText = cell.correctLetter;
+                    checkWordCompletion(pIdx, pState.selectedWord);
+                    break;
+                }
+            }
+
+            updatePlayerHeader(pIdx);
+        }
+
+        function checkOverallVictory(pIdx) {
+            const allSolved = playerStates[pIdx].wordList.every(w => w.isSolved);
+            if (allSolved) {
+                clearInterval(timerInterval);
+                playerStates[pIdx].scores += Math.floor(timeRemaining / 2);
+                finishGame(true, `${teamNames[pIdx]} berhasil menyelesaikan semua TTS!`);
+            }
+        }
+
+        /* ===================================================================
+           FINISH SCREEN & CELEBRATION PODIUM
+           =================================================================== */
+        function finishGame(isWin, message) {
+            playSound(isWin ? 'win' : 'wrong');
+            document.getElementById('screen-game').classList.add('hidden');
+            document.getElementById('game-stats-bar').classList.add('hidden');
+            document.getElementById('screen-result').classList.remove('hidden');
+
+            const winnerTitle = document.getElementById('winner-title');
+            const winnerSubtitle = document.getElementById('winner-subtitle');
+
+            const score0 = playerStates[0].scores;
+            const score1 = playerStates[1].scores;
+
+            if (currentMode === 'dual') {
+                if (score0 > score1) {
+                    winnerTitle.innerText = `🏆 JUARA 1: ${teamNames[0].toUpperCase()}!`;
+                } else if (score1 > score0) {
+                    winnerTitle.innerText = `🏆 JUARA 1: ${teamNames[1].toUpperCase()}!`;
+                } else {
+                    winnerTitle.innerText = `🤝 HASIL SERI / DRAW!`;
+                }
+            } else {
+                winnerTitle.innerText = isWin ? '🎉 SELAMAT! KAMU HEBAT!' : 'PERMAINAN SELESAI';
+            }
+            winnerSubtitle.innerText = `${message} Nilai Pemasaran 4P`;
+
+            document.getElementById('final-team1-name').innerText = teamNames[0];
+            document.getElementById('final-team1-score').innerText = `${score0} Pts`;
+
+            const team2Row = document.getElementById('final-team2-row');
+            if (currentMode === 'dual') {
+                team2Row.classList.remove('hidden');
+                document.getElementById('final-team2-name').innerText = teamNames[1];
+                document.getElementById('final-team2-score').innerText = `${score1} Pts`;
+            } else {
+                team2Row.classList.add('hidden');
+            }
+
+            if (isWin && typeof confetti === 'function') {
+                confetti({
+                    particleCount: 180,
+                    spread: 90,
+                    origin: { y: 0.6 }
+                });
+            }
+        }
+    </script>
+</body>
+</html>
